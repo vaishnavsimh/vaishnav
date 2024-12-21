@@ -1,0 +1,107 @@
+import org.bytedeco.opencv.opencv_core.*;
+import org.bytedeco.opencv.opencv_imgcodecs.*;
+import org.bytedeco.opencv.opencv_objdetect.*;
+import org.bytedeco.opencv.opencv_imgproc.*;
+import ai.djl.Application;
+import ai.djl.Model;
+import ai.djl.ModelException;
+import ai.djl.inference.Predictor;
+import ai.djl.translate.TranslateException;
+import ai.djl.translate.Translator;
+import ai.djl.translate.TranslatorContext;
+import ai.djl.translate.Batchifier;
+import ai.djl.modality.Classifications;
+import ai.djl.modality.Image;
+import ai.djl.modality.Classifications.Classification;
+import ai.djl.util.Utils;
+
+import java.util.List;
+
+public class FacialEmotionRecognition {
+
+    public static void main(String[] args) {
+        // Load OpenCV and initialize the face detection
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        CascadeClassifier faceCascade = new CascadeClassifier("haarcascade_frontalface_default.xml");
+        
+        // Load the image
+        Mat image = imread("test_image.jpg");
+        
+        // Detect faces
+        MatOfRect faces = new MatOfRect();
+        faceCascade.detectMultiScale(image, faces);
+        
+        // Process each face
+        for (Rect rect : faces.toArray()) {
+            // Extract face ROI (Region of Interest)
+            Mat faceROI = new Mat(image, rect);
+            // Preprocess the face for emotion detection
+            Mat preprocessedFace = preprocessFace(faceROI);
+            
+            // Load emotion detection model
+            try {
+                String modelPath = "path_to_your_emotion_recognition_model";
+                Model model = Model.load(modelPath);
+                Predictor<Mat, String> predictor = model.newPredictor(new EmotionTranslator());
+                
+                // Predict emotion for the detected face
+                String emotion = predictor.predict(preprocessedFace);
+                System.out.println("Detected Emotion: " + emotion);
+                
+                // Draw rectangle and label the emotion on the image
+                Imgproc.rectangle(image, rect, new Scalar(0, 255, 0));
+                Imgproc.putText(image, emotion, rect.tl(), Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, new Scalar(0, 255, 0));
+            } catch (ModelException | TranslateException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // Show the image with detected face and emotion
+        imshow("Emotion Detection", image);
+        waitKey();
+    }
+    
+    // Method to preprocess the face image for emotion detection
+    public static Mat preprocessFace(Mat face) {
+        Mat grayFace = new Mat();
+        Imgproc.cvtColor(face, grayFace, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.resize(grayFace, grayFace, new Size(48, 48));  // Resize to 48x48
+        grayFace.convertTo(grayFace, CvType.CV_32F);  // Convert to float
+        grayFace = grayFace.reshape(1, 1);  // Flatten the image for prediction
+        return grayFace;
+    }
+    
+    // Emotion Translator to convert Mat image to predicted emotion
+    static class EmotionTranslator implements Translator<Mat, String> {
+
+        @Override
+        public Batchifier getBatchifier() {
+            return Batchifier.STACK;
+        }
+
+        @Override
+        public void processInput(TranslatorContext ctx, Mat input) {
+            // Convert Mat to a format that DJL understands (image tensor)
+            // Implement any necessary preprocessing here
+            ctx.setAttachment("image", input);
+        }
+
+        @Override
+        public String processOutput(TranslatorContext ctx) {
+            // Get the prediction result and return the emotion class
+            List<Classification> predictions = ctx.getOutput();
+            // For example, take the top 1 predicted emotion
+            return predictions.get(0).getClassName();
+        }
+
+        @Override
+        public Batch processBatch(TranslatorContext ctx, List<Mat> input) {
+            return new Batch(input);
+        }
+
+        @Override
+        public void close() {
+            // Cleanup resources
+        }
+    }
+}
