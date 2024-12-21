@@ -1,0 +1,66 @@
+import java.util.Scanner;
+import java.util.Random;
+
+public class AIChatbot {
+    private static String greetUser() {
+        String[] greetings = {"Hello!", "Hi there!", "Greetings!", "Hey!"};
+        Random random = new Random();
+        return greetings[random.nextInt(greetings.length)];
+    }
+
+    private static String farewellUser() {
+        String[] farewells = {"Goodbye!", "See you later!", "Take care!", "Bye!"};
+        Random random = new Random();
+        return farewells[random.nextInt(farewells.length)];
+    }
+
+    private static String unknownResponse() {
+        String[] responses = {
+            "I'm not sure I understand.",
+            "Can you rephrase that?",
+            "I'm still learning. Can you clarify?",
+            "Hmm, I don't know that yet."
+        };
+        Random random = new Random();
+        return responses[random.nextInt(responses.length)];
+    }
+
+    private static String aiResponse(String userInput) {
+        userInput = userInput.toLowerCase();
+        if (userInput.contains("hello") || userInput.contains("hi") || userInput.contains("hey")) {
+            return greetUser();
+        } else if (userInput.contains("bye") || userInput.contains("goodbye") || userInput.contains("see you")) {
+            return farewellUser();
+        } else if (userInput.contains("weather")) {
+            return "The weather is always a mystery!";
+        } else if (userInput.contains("ai")) {
+            return "I am an AI chatbot created to assist you!";
+        } else if (userInput.contains("favorite color")) {
+            return "I like all colors equally!";
+        } else if (userInput.contains("virat kohli")) {
+            return "Virat Kohli is the king of cricket, especially in Australia!";
+        } else {
+            return unknownResponse();
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Welcome to the AI Chatbot! Type 'exit' to end the conversation.");
+
+        while (true) {
+            System.out.print("You: ");
+            String userInput = scanner.nextLine();
+
+            if (userInput.equalsIgnoreCase("exit")) {
+                System.out.println("Chatbot: " + farewellUser());
+                break;
+            }
+
+            String response = aiResponse(userInput);
+            System.out.println("Chatbot: " + response);
+        }
+
+        scanner.close();
+    }
+}
